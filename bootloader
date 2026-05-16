@@ -1,4 +1,3 @@
-; boot.asm – загрузчик с переходом в 64-битный режим (NASM)
 [bits 16]
 [org 0x7C00]
 
@@ -13,7 +12,7 @@ start:
 
     mov [boot_drive], dl
 
-    ; чтение ядра (секторы 2..9) в 0x1000:0x0000
+    ; читаем ядро (секторы 2–9) в 0x1000:0x0000
     mov ah, 0x02
     mov al, 8
     mov ch, 0
@@ -26,20 +25,32 @@ start:
     int 0x13
     jc error
 
-    ; A20
+    ; включение A20
     in al, 0x92
     or al, 2
     out 0x92, al
 
-    ; загрузка 32-битной GDT
-    lgdt [gdt32_desc]
+    ; загрузка GDT
+    lgdt [gdt_desc]
 
-    ; переход в защищённый режим (32 бита)
+    ; переход в защищённый режим
     mov eax, cr0
     or eax, 1
     mov cr0, eax
 
     jmp 0x08:protected_mode
+
+[bits 32]
+protected_mode:
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    mov esp, 0x90000
+
+    jmp 0x08:0x10000
 
 error:
     mov si, msg_error
@@ -59,155 +70,18 @@ print16:
 msg_error: db "Failed to load kernel!", 0
 boot_drive: db 0
 
-; ----- 32-битный защищённый режим -----
-[bits 32]
-protected_mode:
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov esp, 0x90000
-
-    ; теперь переходим в long mode
-    call setup_long_mode
-
-    ; сюда не попадём
-    cli
-    hlt
-
-; ----- настройка long mode -----
-setup_long_mode:
-    ; 1. проверка поддержки long mode
-    call check_long_mode
-    ; 2. настройка страниц
-    call setup_paging
-    ; 3. включение PAE, LME, paging
-    call enable_long_mode
-    ; 4. загрузка 64-битной GDT
-    lgdt [gdt64_desc]
-    ; 5. прыжок в 64-битный код
-    jmp 0x08:long_mode_entry
-
-check_long_mode:
-    pushfd
-    pop eax
-    mov ecx, eax
-    xor eax, 0x200000
-    push eax
-    popfd
-    pushfd
-    pop eax
-    cmp eax, ecx
-    je .no
-    mov eax, 0x80000000
-    cpuid
-    cmp eax, 0x80000001
-    jb .no
-    mov eax, 0x80000001
-    cpuid
-    test edx, 1<<29
-    jz .no
-    ret
-.no:
-    mov esi, msg_no64
-    call print32
-    jmp $
-
-setup_paging:
-    ; используем память по адресу 0x20000 для таблиц страниц
-    mov edi, 0x20000
-    xor eax, eax
-    mov ecx, 4096/4
-    rep stosd
-
-    ; PML4
-    mov dword [0x20000], 0x21000 | 0x03
-    ; PDPT
-    mov dword [0x21000], 0x22000 | 0x03
-    ; PD – 2 МБ страницы
-    mov dword [0x22000], 0x00000083     ; первая страница 0-2 МБ
-    ; можно добавить больше записей для отображения дополнительной памяти
-    ret
-
-enable_long_mode:
-    ; PAE
-    mov eax, cr4
-    or eax, 1<<5
-    mov cr4, eax
-    ; CR3
-    mov eax, 0x20000
-    mov cr3, eax
-    ; LME (IA32_EFER)
-    mov ecx, 0xC0000080
-    rdmsr
-    or eax, 1<<8
-    wrmsr
-    ; Paging
-    mov eax, cr0
-    or eax, 0x80000000
-    mov cr0, eax
-    ret
-
-print32:
-    pusha
-    mov edi, 0xB8000
-    mov cx, 2000
-    xor ax, ax
-    rep stosw
-    popa
-    mov edi, 0xB8000
-.loop:
-    lodsb
-    test al, al
-    jz .done
-    mov ah, 0x07
-    stosw
-    jmp .loop
-.done:
-    ret
-
-msg_no64: db "No 64-bit support!", 0
-
-; ----- 64-битный режим -----
-[bits 64]
-long_mode_entry:
-    mov ax, 0x10
-    mov ds, ax
-    mov es, ax
-    mov ss, ax
-    mov rsp, kernel_stack_top
-
-    ; вызываем 64-битное ядро (загружено по адресу 0x10000)
-    ; важно: ядро должно быть скомпилировано как 64-битный код
-    call 0x10000
-    cli
-    hlt
-    jmp $
-
-; ----- GDT 32-bit -----
-gdt32_start:
+; ----- GDT (минимальная, плоская модель) -----
+gdt_start:
     dq 0
-    dw 0xFFFF, 0x0000, 0x9A00, 0x00CF   ; 0x08 code
-    dw 0xFFFF, 0x0000, 0x9200, 0x00CF   ; 0x10 data
-gdt32_end:
-gdt32_desc: dw gdt32_end - gdt32_start - 1
-            dd gdt32_start
+    ; сегмент кода 0x08
+    dw 0xFFFF, 0x0000, 0x9A00, 0x00CF
+    ; сегмент данных 0x10
+    dw 0xFFFF, 0x0000, 0x9200, 0x00CF
+gdt_end:
 
-; ----- GDT 64-bit (минимальная) -----
-align 8
-gdt64_start:
-    dq 0
-    ; сегмент кода (0x08) – 64-битный
-    dw 0xFFFF, 0, 0x9A00, 0x00CF, 0, 0, 0, 0
-    ; сегмент данных (0x10)
-    dw 0xFFFF, 0, 0x9200, 0x00CF, 0, 0, 0, 0
-gdt64_end:
-gdt64_desc: dw gdt64_end - gdt64_start - 1
-            dq gdt64_start
+gdt_desc:
+    dw gdt_end - gdt_start - 1
+    dd gdt_start
 
-kernel_stack_top:
-    times 4096 db 0
-
-; заполнение до 512 байт
 times 510-($-$$) db 0
 dw 0xAA55

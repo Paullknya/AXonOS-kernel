@@ -1,4 +1,4 @@
-# 🧠 AxonOS – 32-bit x86 operating system from scratch
+# 🧠 AxonOS – 32-bit x86 operating system from scratch.
 
 [![GitHub last commit](https://img.shields.io/github/last-commit/Paullknya/AxonOS?style=flat-square)](https://github.com/Paullknya/AxonOS)
 [![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/Paullknya/AxonOS?style=flat-square)](https://github.com/Paullknya/AxonOS)
@@ -11,4 +11,4 @@
 > 
 ════════════════════════════════════════════════════
       
- link on my reposytory: [![AXonOS]([https://img.shields.io/badge/license-MIT-blue?style=flat-square](https://github.com/Paullknya/AXonOS))]
+ link on AXonOS-kernel reposytory: [![AXonOS]([https://img.shields.io/badge/license-MIT-blue?style=flat-square](https://github.com/Paullknya/AXonOS))]

@@ -49,3 +49,5 @@ qemu-system-i386 -fda axonos.img
 ## Вопросы?
 
 Присоединяйтесь к обсуждениям или откройте Issue.
+
+https://github.com/Paullknya/AXonOS-kernel/discussions

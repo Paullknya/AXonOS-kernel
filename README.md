@@ -1,4 +1,4 @@
-# 🧠 Snorkel-OS
+#  🤿 Snorkel-OS
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Latest Release](https://img.shields.io/github/v/release/Paullknya/Paull-kernel)](https://github.com/Paullknya/Paull-kernel/releases/latest)
@@ -51,4 +51,5 @@ Questions?
 Join Discussions or open an Issue.
 
 🔗 Author: Paullknya
+
 💬 Community forum: paullknya.github.io
